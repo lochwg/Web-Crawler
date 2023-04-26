@@ -1,0 +1,76 @@
+import pymysql
+connect = pymysql.connect(host = 'localhost',
+                          user = 'root',
+                          passwd = '00000000',
+                          db = 'my_db')
+cursor = connect.cursor()
+
+# create DB named raw_shopee-1 (including total ranking)
+create_table = """CREATE TABLE IF NOT EXISTS `my_db`.`raw_shopee-2` \
+                  ( `Date` DATE NOT NULL ,\
+                    `Product_Name` TEXT NOT NULL ,\
+                    `Product_Price` TEXT NOT NULL ,\
+                    `Sales` TEXT NOT NULL ,\
+                    `Location` TEXT NOT NULL,\
+                    `Link` TEXT NOT NULL) ENGINE = InnoDB;"""
+cursor.execute(create_table)
+
+import selenium
+import time
+from selenium import webdriver
+from selenium.webdriver.chrome.options import Options
+import random
+
+chrome_path = "C:\\Users\\Phil\\Desktop\\chromedriver.exe"
+user_agent = "Mozilla/5.0 (Windows NT 10.0; WOW64; rv:53.0) Gecko/20100101 Firefox/53.0"
+options = Options()
+options.add_argument("--incognito")   
+options.add_argument("user-agent={}".format(user_agent))
+driver = webdriver.Chrome(chrome_path, chrome_options = options)
+time.sleep(random.randint(7,14))
+
+date = '2020-05-18'
+
+# page_num = 0
+# raw_url = 'https://shopee.tw/search?keyword=%E6%9E%9C%E9%86%AC&page='
+
+# for page in range(0,10):
+#     url = raw_url + str(page_num)
+#     page_num = page_num + 1
+url = 'https://shopee.tw/search?keyword=%E6%9E%9C%E9%86%AC&page=9&sortBy=sales'
+driver.get(url)
+driver.maximize_window()
+
+# To load all of shopee's items
+
+scroll_position = ['1300', '2300', '3000']
+for position in scroll_position:
+    js_code = "var q=document.documentElement.scrollTop=" + position
+    driver.execute_script(js_code)
+    time.sleep(random.randint(4,7))
+
+divs = driver.find_elements_by_xpath('//div[@class="row shopee-search-item-result__items"]')
+for div in divs:
+    all_items = div.find_elements_by_xpath('.//div[@class="col-xs-2-4 shopee-search-item-result__item"]')
+    for item_num in range(0,50):        
+        product_name = all_items[item_num].find_element_by_xpath('.//div[@class="O6wiAW"]').text
+        product_price = all_items[item_num].find_element_by_xpath('.//div[@class="_1w9jLI _37ge-4 _2ZYSiu"]').text
+        sales = all_items[item_num].find_element_by_xpath('.//div[@class="_18SLBt"]').text
+        location = all_items[item_num].find_element_by_xpath('.//div[@class="_3amru2"]').text
+
+        link_num = item_num + 16
+        link = div.find_elements_by_xpath('//div/a')[link_num].get_attribute('href')
+            
+        product_name = product_name.replace('"', '')
+
+        sql =  '''INSERT INTO `raw_shopee-2`\
+                         (`Date`, 
+                         `Product_Name`, 
+                         `Product_Price`,
+                         `Sales`,
+                        `Location`,
+                        `Link`) VALUES ("%s","%s","%s","%s","%s","%s");''' % \
+                         (date, product_name, product_price, sales, location, link)
+        cursor.execute(sql)
+        connect.commit()
+driver.close()
