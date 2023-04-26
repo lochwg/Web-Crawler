@@ -1,0 +1,134 @@
+#先取得stock id
+import requests
+import pandas as pd
+
+stock_id = []
+stock_name = []
+
+def get():
+    global stock_id, stock_name
+    
+    stock_id = []
+    stock_name = []
+    
+    stock_id_name = []
+    url = 'https://isin.twse.com.tw/isin/C_public.jsp?strMode=2'
+    response = requests.get(url)
+    data = response.text
+    raw_data = pd.read_html(data)
+
+    df_data = raw_data[0][0].drop([0, 1], inplace = False)
+    listed_stock = df_data[0:941]
+    #資料修正 原為'4148 全宇生技-KY' 導致資料切分產生錯誤
+    listed_stock[649] = '4148\u3000全宇生技-KY'
+
+    for stock in listed_stock:
+        stock_id_name.append(stock)
+
+    f = 0
+    for i in stock_id_name:
+        sp = stock_id_name[f].split("\u3000", 1)
+        stock_id.append(sp[0])
+        stock_name.append(sp[1])
+        f = f + 1
+
+if __name__ == '__main__':
+    get()
+    
+import random
+from selenium import webdriver
+import os
+import time
+import csv
+import pandas as pd
+import stock_info
+stock_info.get()
+
+def download():
+    global path, file_path, stock_id, stock_name, csv_file_path
+    
+    stock_id = stock_info.stock_id
+    stock_name = stock_info.stock_name
+
+    title = '({}) {} - 月營收狀況趨勢圖 - Goodinfo!台灣股市資訊網'
+    path = 'https://goodinfo.tw/StockInfo/ShowSaleMonChart.asp?STOCK_ID={}'
+    savefile_path = 'C:\\Users\\Shawn\\Downloads\\SaleMonDetail.html'
+    file_path = 'C:\\Users\\Shawn\\Desktop\\SaleMonDetail\\{}_SaleMonDetail.html'
+    csv_file_path = 'C:\\Users\\Shawn\\Desktop\\SaleMonDetail.csv'
+    
+    count = 1
+    f = 0
+    for stock in stock_id:
+        count = 1
+        f = 0
+        name = stock_name[f]
+        f = f + 1 
+
+        url = path.format(stock)
+        web_title = title.format(stock, name)
+        newfile_path = file_path.format(stock)  
+
+        print('=======正在下載', count, '/ 941 筆資料=======','股票資訊：',stock,name)
+        count = count + 1
+
+        #需修改chromedriver路徑
+        wait_1st = random.randint(3,8)
+        wait_2nd = random.randint(10,20)
+
+        driver = webdriver.Chrome('C:\\Users\\Shawn\\Desktop\\chromedriver.exe')
+        driver.get(url)
+        driver.maximize_window()
+        driver.implicitly_wait(30)
+        time.sleep(wait_1st)
+        if driver.title == web_title:
+            html_btn = driver.find_element_by_xpath('//*[@id="divSaleMonChartDetail"]/table/tbody/tr/td/input[2]')
+            html_btn.click()
+            time.sleep(wait_2nd)
+            driver.quit()
+
+        else:
+            print('=====發生錯誤斷線，重新連接=====')
+            driver.get(url)
+            driver.maximize_window()
+            driver.implicitly_wait(30)
+            time.sleep(wait_1st)
+            if driver.title == web_title:
+                html_btn = driver.find_element_by_xpath('//*[@id="divSaleMonChartDetail"]/table/tbody/tr/td/input[2]')
+                html_btn.click()
+                time.sleep(wait_2nd)
+                driver.quit()
+            else:
+                print('=====強制關閉，請檢查網路連線或Selenium等待參數=====')
+                driver.quit()
+
+        #檔案更名
+        os.rename(savefile_path , newfile_path)
+if __name__ == '__main__':
+    download()
+
+def integrate():
+    with open(csv_file_path,'w',newline='') as f:
+        writer = csv.writer(f)
+        headers = ['股票代號', '月別', '當月股價-開盤', '當月股價-收盤', '當月股價-最高', '當月股價-最低',\
+                   '當月股價-漲跌(元)', '當月股價-漲跌(%)', '營業收入-單月營收(億)', '營業收入-單月月增(%)',\
+                   '營業收入-單月年增(%)', '營業收入-累計營收(億)', '營業收入-累計年增(%)',\
+                   '合併營業收入-單月累計營收(億)', '合併營業收入-單月月增(%)', '合併營業收入-單月年增(%)',\
+                   '合併營業收入-累計營收(億)', '合併營業收入-累計年增(%)']
+        writer.writerow(headers)
+    
+    for stock in stock_id:
+        raw_data = pd.read_html(file_path.format(stock))
+        
+        df = raw_data[0].sort_index(axis = 0, ascending = False)
+        save_df = df.reset_index()
+        save_df.drop(['index'], axis=1, inplace=True)
+        save_df.drop([0, 1, 2], axis=0, inplace=True)
+    
+        indexs = []
+        for i in range(len(save_df)):
+            indexs.append(stock)
+    
+        save_df.index = indexs
+        save_df.to_csv(csv_file_path, mode='a', header=True, encoding='utf_8_sig')
+if __name__ == '__main__':
+    integrate()
