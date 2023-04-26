@@ -1,0 +1,28 @@
+import selenium
+import time
+from selenium import webdriver
+chrome_path = "C:\\Users\\Shawn\\Desktop\\chromedriver.exe"
+driver = webdriver.Chrome(chrome_path)
+n = 1 
+
+for i in range(0,15):
+    url = 'https://www.pinkoi.com/product/Fef3YSH8?ref_pgsz=60&ref_page=1&ref_sec=shop_list_item&ref_entity_id=weixun&ref_created=1588918189&ref_entity=shop&ref_pgsess=1588918189&ref_posn='\
+         + str(n)
+    print('正在取得第' + str(n) + '項產品')
+    n = n + 1     
+    driver.get(url)
+    time.sleep(5)
+    product_name = driver.find_elements_by_xpath('//*[@id="sider"]/div[1]/h1/span')[0].text
+    product_price = driver.find_elements_by_xpath('//*[@id="sider"]/div[1]/div/div[1]/div/span[2]')[0].text
+    #product
+    like = driver.find_elements_by_xpath('//*[@id="sider"]/div[3]/div/dl/div[5]/dd/ul/li[1]')[0].text
+    sales = driver.find_elements_by_xpath('//*[@id="sider"]/div[3]/div/dl/div[5]/dd/ul/li[2]')[0].text
+    collect = driver.find_elements_by_xpath('//*[@id="sider"]/div[3]/div/dl/div[5]/dd/ul/li[3]')[0].text
+    content = driver.find_elements_by_xpath('//*[@id="sider"]/div[4]/div/dl/div[1]/dd')[0].text
+    data = {'產品名稱':product_name,\
+            '產品價格':product_price,\
+            '產品容量':content,\
+            '喜歡':like,\
+            '銷售量':sales,\
+            '收藏數':collect}
+    print(data)
